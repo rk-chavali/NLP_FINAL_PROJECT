@@ -1,66 +1,89 @@
-# Multi-Label Petition Classification Application
+# Multi-Label Petition Classification (EUROVOC)
 
-This Streamlit application allows users to classify petition texts into EUROVOC categories using various NLP models, including traditional machine learning approaches and deep learning techniques.
+Classifies petition text into EUROVOC subject categories, a multi-label problem
+where any document can carry several categories at once. Four models are
+compared, from a TF-IDF baseline to fine-tuned BERT variants, and served through
+a Streamlit app.
 
-## Installation
+[![Python](https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Transformers](https://img.shields.io/badge/🤗_Transformers-FFD21E)](https://huggingface.co/docs/transformers)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22C55E.svg)](LICENSE)
 
-1. Clone this repository:
-```
-git clone github.com/Ramakrishnanewbie/NLP_FINAL_PROJECT
-cd petition-classification
-```
+## Results on EURLEX
 
-2. Install the required packages:
-```
+| Model | F1 | Precision | Recall |
+|-------|-----|-----------|--------|
+| Naive Bayes | 0.290 | 0.833 | 0.176 |
+| **Passive Aggressive** | **0.688** | 0.765 | 0.625 |
+| BERT + GRU | 0.529 | 0.860 | 0.382 |
+| BERT + BiLSTM | 0.298 | 0.855 | 0.181 |
+
+**The TF-IDF Passive Aggressive classifier beats both BERT variants.** That is
+the interesting result, and it is worth reading the reason off the columns rather
+than the headline number.
+
+Every model has high precision and poor recall. They are confident about the
+labels they assign and assign too few of them, which is the classic failure mode
+for multi-label problems with a long tail of rare categories: predicting the
+common labels and abstaining on the rest is locally rewarded. Passive Aggressive
+wins because its recall is 0.625 while the next best manages 0.382, not because
+it is more precise. It is in fact the least precise of the four.
+
+The BERT models were trained on limited data and epochs. With more of both, the
+ordering would likely change. As it stands, a linear model on TF-IDF features is
+the better choice here, which is a useful reminder that transformer capacity
+needs the data budget to match.
+
+## Models
+
+| Approach | Detail |
+|----------|--------|
+| Naive Bayes | Multinomial NB over TF-IDF, one-vs-rest |
+| Passive Aggressive | Online linear classifier over TF-IDF, one-vs-rest |
+| BERT + GRU | BERT embeddings into a GRU head |
+| BERT + BiLSTM | BERT embeddings into a bidirectional LSTM head |
+
+Labels are binarised with `MultiLabelBinarizer` so each category becomes an
+independent binary decision.
+
+## Run it
+
+```bash
+git clone https://github.com/rk-chavali/NLP_FINAL_PROJECT
+cd NLP_FINAL_PROJECT
 pip install -r requirements.txt
+streamlit run streamlit-app.py
 ```
 
-3. Export your trained models from your Jupyter notebook (Most important, otherwise streamlit won't run):
+Opens on http://localhost:8501. Enter petition text or load a sample, pick a
+model in the sidebar, and classify.
 
-* Github doesn't allow us toa dd pkl and pt files where the weights are saved due to storage limit. So, do make sure to update these to make sure the UI works. 
+## Model weights are not included
+
+GitHub's file size limits keep the `.pkl` and `.pt` weights out of the repo, so
+the app will not run until you export them from `codebase.ipynb`:
 
 ```python
-# Save the TF-IDF vectorizer
 joblib.dump(tfidf, "tfidf_vectorizer.pkl")
-
-# Save the MultiLabelBinarizer
 joblib.dump(mlb, "multilabel_binarizer.pkl")
-
-# Save traditional models
 joblib.dump(model_nb, "naive_bayes_model.pkl")
 joblib.dump(model_pa, "passive_aggressive_model.pkl")
-
-# Save BERT models
 torch.save(model_bert_gru, "bert_gru_model.pt")
 torch.save(model_bilstm, "bert_bilstm_model.pt")
 ```
 
-4. Ensure all model files are in the same directory as the application.
+Place all six files next to `streamlit-app.py`.
 
-## Usage
+## Layout
 
-1. Run the Streamlit application:
-```
-streamlit run app.py
-```
+| Path | Purpose |
+|------|---------|
+| `codebase.ipynb` | Training, evaluation, and weight export |
+| `streamlit-app.py` | Inference UI |
+| `requirements.txt` | Dependencies |
 
-2. Open your browser and go to `http://localhost:8501`
+## License
 
-3. Enter petition text or load a sample
-
-4. Select a model from the sidebar
-
-5. Click "Classify Petition" to see results
-
-## Example Model Metrics
-
-Based on the EURLEX dataset:
-
-| Model | F1 Score | Precision | Recall |
-|-------|----------|-----------|--------|
-| Naive Bayes | 0.290 | 0.833 | 0.176 |
-| Passive Aggressive | 0.688 | 0.765 | 0.625 |
-| BERT+GRU | 0.529 | 0.860 | 0.382 |
-| BERT+BiLSTM | 0.298 | 0.855 | 0.181 |
-
-
+MIT, see [LICENSE](LICENSE).
